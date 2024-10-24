@@ -19,10 +19,36 @@ app.appendChild(canvas);
 
 const ctx = canvas.getContext("2d");
 
-// Store the user's drawing data and redo stack
-let drawing: { x: number; y: number }[][] = [];
-let redoStack: { x: number; y: number }[][] = [];
-let currentLine: { x: number; y: number }[] = [];
+// MarkerLine class to represent lines with a display method
+class MarkerLine {
+  private points: { x: number; y: number }[];
+
+  constructor(initialPoint: { x: number; y: number }) {
+    this.points = [initialPoint]; // Start with the initial point
+  }
+
+  drag(x: number, y: number) {
+    // Add the next point in the line as the mouse moves
+    this.points.push({ x, y });
+  }
+
+  display(ctx: CanvasRenderingContext2D) {
+    if (this.points.length > 1) {
+      ctx.beginPath();
+      ctx.moveTo(this.points[0].x, this.points[0].y);
+      for (let i = 1; i < this.points.length; i++) {
+        ctx.lineTo(this.points[i].x, this.points[i].y);
+      }
+      ctx.stroke();
+      ctx.closePath();
+    }
+  }
+}
+
+// Store the user's drawing data and redo stack using MarkerLine instances
+let drawing: MarkerLine[] = [];
+let redoStack: MarkerLine[] = [];
+let currentLine: MarkerLine | null = null;
 
 // Track whether the user is drawing
 let isDrawing = false;
@@ -36,21 +62,22 @@ const dispatchDrawingChangedEvent = () => {
 // Event listeners for drawing
 canvas.addEventListener("mousedown", (e) => {
   isDrawing = true;
-  currentLine = [{ x: e.offsetX, y: e.offsetY }]; // Start a new line
+  currentLine = new MarkerLine({ x: e.offsetX, y: e.offsetY }); // Create a new MarkerLine
   redoStack = []; // Clear the redo stack on new drawing action
 });
 
 canvas.addEventListener("mousemove", (e) => {
-  if (isDrawing) {
-    currentLine.push({ x: e.offsetX, y: e.offsetY });
+  if (isDrawing && currentLine) {
+    currentLine.drag(e.offsetX, e.offsetY); // Extend the current line
     dispatchDrawingChangedEvent(); // Dispatch event on every new point
   }
 });
 
 canvas.addEventListener("mouseup", () => {
-  if (isDrawing) {
+  if (isDrawing && currentLine) {
     drawing.push(currentLine); // Save the completed line to the drawing
     isDrawing = false;
+    currentLine = null; // Reset current line
     dispatchDrawingChangedEvent(); // Final event to signal drawing completed
   }
 });
@@ -61,13 +88,7 @@ canvas.addEventListener("drawing-changed", () => {
 
   // Redraw all lines from the saved drawing data
   drawing.forEach((line) => {
-    ctx?.beginPath();
-    ctx?.moveTo(line[0].x, line[0].y);
-    for (let i = 1; i < line.length; i++) {
-      ctx?.lineTo(line[i].x, line[i].y);
-    }
-    ctx?.stroke();
-    ctx?.closePath();
+    line.display(ctx!); // Call the display method on each MarkerLine
   });
 });
 
