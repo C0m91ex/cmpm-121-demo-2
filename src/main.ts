@@ -19,12 +19,14 @@ app.appendChild(canvas);
 
 const ctx = canvas.getContext("2d");
 
-// MarkerLine class to represent lines with a display method
+// MarkerLine class to represent lines with thickness
 class MarkerLine {
   private points: { x: number; y: number }[];
+  private thickness: number;
 
-  constructor(initialPoint: { x: number; y: number }) {
+  constructor(initialPoint: { x: number; y: number }, thickness: number) {
     this.points = [initialPoint]; // Start with the initial point
+    this.thickness = thickness;   // Set the thickness for the line
   }
 
   drag(x: number, y: number) {
@@ -39,6 +41,7 @@ class MarkerLine {
       for (let i = 1; i < this.points.length; i++) {
         ctx.lineTo(this.points[i].x, this.points[i].y);
       }
+      ctx.lineWidth = this.thickness; // Set the line thickness
       ctx.stroke();
       ctx.closePath();
     }
@@ -50,8 +53,9 @@ let drawing: MarkerLine[] = [];
 let redoStack: MarkerLine[] = [];
 let currentLine: MarkerLine | null = null;
 
-// Track whether the user is drawing
+// Track whether the user is drawing and the current line thickness
 let isDrawing = false;
+let currentThickness = 1; // Default thickness for "thin"
 
 // Function to dispatch the "drawing-changed" event
 const dispatchDrawingChangedEvent = () => {
@@ -62,7 +66,7 @@ const dispatchDrawingChangedEvent = () => {
 // Event listeners for drawing
 canvas.addEventListener("mousedown", (e) => {
   isDrawing = true;
-  currentLine = new MarkerLine({ x: e.offsetX, y: e.offsetY }); // Create a new MarkerLine
+  currentLine = new MarkerLine({ x: e.offsetX, y: e.offsetY }, currentThickness); // Create a new MarkerLine with current thickness
   redoStack = []; // Clear the redo stack on new drawing action
 });
 
@@ -125,3 +129,23 @@ redoButton.addEventListener("click", () => {
   }
 });
 app.appendChild(redoButton);
+
+// Create and append the "thin" button
+const thinButton = document.createElement("button");
+thinButton.textContent = "Thin Marker";
+thinButton.addEventListener("click", () => {
+  currentThickness = 1; // Set thickness to 1 for thin marker
+  thinButton.classList.add("selectedTool");
+  thickButton.classList.remove("selectedTool");
+});
+app.appendChild(thinButton);
+
+// Create and append the "thick" button
+const thickButton = document.createElement("button");
+thickButton.textContent = "Thick Marker";
+thickButton.addEventListener("click", () => {
+  currentThickness = 5; // Set thickness to 5 for thick marker
+  thickButton.classList.add("selectedTool");
+  thinButton.classList.remove("selectedTool");
+});
+app.appendChild(thickButton);

@@ -98,3 +98,9 @@ button:focus-visible {
     background-color: #f9f9f9;
   }
 }
+
+.selectedTool {
+  border-color: #646cff;
+  background-color: #535bf2;
+  color: white;
+}
