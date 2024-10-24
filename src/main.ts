@@ -48,6 +48,33 @@ class MarkerLine {
   }
 }
 
+// ToolPreview class to display a preview of the tool (circle)
+class ToolPreview {
+  private x: number;
+  private y: number;
+  private thickness: number;
+
+  constructor(x: number, y: number, thickness: number) {
+    this.x = x;
+    this.y = y;
+    this.thickness = thickness;
+  }
+
+  updatePosition(x: number, y: number) {
+    this.x = x;
+    this.y = y;
+  }
+
+  draw(ctx: CanvasRenderingContext2D) {
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.thickness / 2, 0, Math.PI * 2); // Draw a circle preview
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = "black";
+    ctx.stroke();
+    ctx.closePath();
+  }
+}
+
 // Store the user's drawing data and redo stack using MarkerLine instances
 let drawing: MarkerLine[] = [];
 let redoStack: MarkerLine[] = [];
@@ -56,6 +83,7 @@ let currentLine: MarkerLine | null = null;
 // Track whether the user is drawing and the current line thickness
 let isDrawing = false;
 let currentThickness = 1; // Default thickness for "thin"
+let toolPreview: ToolPreview | null = null; // Nullable reference for tool preview
 
 // Function to dispatch the "drawing-changed" event
 const dispatchDrawingChangedEvent = () => {
@@ -68,12 +96,21 @@ canvas.addEventListener("mousedown", (e) => {
   isDrawing = true;
   currentLine = new MarkerLine({ x: e.offsetX, y: e.offsetY }, currentThickness); // Create a new MarkerLine with current thickness
   redoStack = []; // Clear the redo stack on new drawing action
+  toolPreview = null; // Hide tool preview while drawing
 });
 
 canvas.addEventListener("mousemove", (e) => {
   if (isDrawing && currentLine) {
     currentLine.drag(e.offsetX, e.offsetY); // Extend the current line
     dispatchDrawingChangedEvent(); // Dispatch event on every new point
+  } else {
+    // Update tool preview when the mouse moves (if not drawing)
+    if (!toolPreview) {
+      toolPreview = new ToolPreview(e.offsetX, e.offsetY, currentThickness); // Create tool preview on first move
+    } else {
+      toolPreview.updatePosition(e.offsetX, e.offsetY); // Update position
+    }
+    dispatchToolMovedEvent(); // Dispatch tool-moved event
   }
 });
 
@@ -94,6 +131,19 @@ canvas.addEventListener("drawing-changed", () => {
   drawing.forEach((line) => {
     line.display(ctx!); // Call the display method on each MarkerLine
   });
+});
+
+// Function to dispatch the "tool-moved" event
+const dispatchToolMovedEvent = () => {
+  const event = new Event("tool-moved");
+  canvas.dispatchEvent(event);
+};
+
+// Observer for "tool-moved" event to redraw the tool preview
+canvas.addEventListener("tool-moved", () => {
+  if (!isDrawing && toolPreview) {
+    toolPreview.draw(ctx!); // Draw the tool preview circle if not drawing
+  }
 });
 
 // Create and append the clear button
