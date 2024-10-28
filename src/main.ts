@@ -4,6 +4,11 @@ const APP_NAME = "Sketch Pad";
 const app = document.querySelector<HTMLDivElement>("#app")!;
 document.title = APP_NAME;
 
+// Create a header for the app name
+const header = document.createElement("h1");
+header.innerText = APP_NAME;
+app.appendChild(header);
+
 // Create a container for the canvas and position it above the buttons
 const canvasContainer = document.createElement("div");
 canvasContainer.style.marginBottom = "10px"; // Adds space below the canvas to separate it from buttons
@@ -87,9 +92,8 @@ app.appendChild(redoButton);
 let isDrawing = false;
 let currentTool: string = "thin";
 let displayList: Command[] = [];
-const redoStack: Command[] = []; // Changed to const
+const redoStack: Command[] = [];
 let currentCommand: Command | null = null;
-let toolPreview: ToolPreview | StickerPreview | null = null;
 
 // Base Command interface
 interface Command {
@@ -101,9 +105,11 @@ interface Command {
 class MarkerCommand implements Command {
   points: { x: number; y: number }[] = [];
   thickness: number;
+  color: string;
 
-  constructor(thickness: number) {
+  constructor(thickness: number, color: string) {
     this.thickness = thickness;
+    this.color = color;
   }
 
   drag(x: number, y: number) {
@@ -113,6 +119,7 @@ class MarkerCommand implements Command {
   draw(ctx: CanvasRenderingContext2D) {
     if (this.points.length < 2) return;
     ctx.lineWidth = this.thickness;
+    ctx.strokeStyle = this.color;
     ctx.beginPath();
     ctx.moveTo(this.points[0].x, this.points[0].y);
     for (const point of this.points) {
@@ -127,9 +134,11 @@ class StickerCommand implements Command {
   x: number = 0;
   y: number = 0;
   sticker: string;
+  rotation: number;
 
-  constructor(sticker: string) {
+  constructor(sticker: string, rotation: number) {
     this.sticker = sticker;
+    this.rotation = rotation;
   }
 
   drag(x: number, y: number) {
@@ -138,52 +147,12 @@ class StickerCommand implements Command {
   }
 
   draw(ctx: CanvasRenderingContext2D) {
+    ctx.save();
+    ctx.translate(this.x, this.y);
+    ctx.rotate(this.rotation);
     ctx.font = "48px serif";
-    ctx.fillText(this.sticker, this.x, this.y);
-  }
-}
-
-// ToolPreview class for markers
-class ToolPreview {
-  x: number = 0;
-  y: number = 0;
-  thickness: number;
-
-  constructor(thickness: number) {
-    this.thickness = thickness;
-  }
-
-  move(x: number, y: number) {
-    this.x = x;
-    this.y = y;
-  }
-
-  draw(ctx: CanvasRenderingContext2D) {
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.arc(this.x, this.y, this.thickness / 2, 0, Math.PI * 2);
-    ctx.stroke();
-  }
-}
-
-// StickerPreview class for stickers
-class StickerPreview {
-  x: number = 0;
-  y: number = 0;
-  sticker: string;
-
-  constructor(sticker: string) {
-    this.sticker = sticker;
-  }
-
-  move(x: number, y: number) {
-    this.x = x;
-    this.y = y;
-  }
-
-  draw(ctx: CanvasRenderingContext2D) {
-    ctx.font = "48px serif";
-    ctx.fillText(this.sticker, this.x, this.y);
+    ctx.fillText(this.sticker, 0, 0);
+    ctx.restore();
   }
 }
 
@@ -191,9 +160,12 @@ class StickerPreview {
 canvas.addEventListener("mousedown", (e) => {
   isDrawing = true;
   if (currentTool === "thin" || currentTool === "thick") {
-    currentCommand = new MarkerCommand(currentTool === "thick" ? 8 : 2);
+    const thickness = currentTool === "thick" ? 8 : 2;
+    const color = getRandomColor(); // Get a random color for the marker
+    currentCommand = new MarkerCommand(thickness, color);
   } else {
-    currentCommand = new StickerCommand(currentTool);
+    const rotation = getRandomRotation(); // Get a random rotation for the sticker
+    currentCommand = new StickerCommand(currentTool, rotation);
   }
   currentCommand?.drag(e.offsetX, e.offsetY); // Safe navigation to check if currentCommand is defined
 });
@@ -202,10 +174,6 @@ canvas.addEventListener("mousemove", (e) => {
   if (isDrawing && currentCommand) {
     currentCommand.drag?.(e.offsetX, e.offsetY); // Safe navigation here
     fireDrawingChangedEvent();
-  }
-  if (!isDrawing && toolPreview) {
-    toolPreview.move(e.offsetX, e.offsetY);
-    fireToolMovedEvent();
   }
 });
 
@@ -251,53 +219,37 @@ function fireDrawingChangedEvent() {
   }
 }
 
-function fireToolMovedEvent() {
-  fireDrawingChangedEvent();
-  if (toolPreview) {
-    toolPreview.draw(ctx);
-  }
-}
-
 // Tool selection logic
 function selectTool(tool: string) {
   currentTool = tool;
   currentCommand = null;
-  toolPreview = new ToolPreview(tool === "thick" ? 8 : 2);
-  fireToolMovedEvent();
 }
 
-// Sticker selection logic
-function selectSticker(sticker: string) {
-  currentTool = sticker;
-  currentCommand = null;
-  toolPreview = new StickerPreview(sticker);
-  fireToolMovedEvent();
-}
-
-// Export functionality
-function exportCanvasAsPNG() {
-  const exportCanvas = document.createElement("canvas");
-  exportCanvas.width = 1024;
-  exportCanvas.height = 1024;
-  const exportCtx = exportCanvas.getContext("2d")!;
-  exportCtx.scale(4, 4);
-
-  for (const command of displayList) {
-    command.draw(exportCtx);
+// Function to get a random color
+function getRandomColor(): string {
+  const letters = '0123456789ABCDEF';
+  let color = '#';
+  for (let i = 0; i < 6; i++) {
+    color += letters[Math.floor(Math.random() * 16)];
   }
-
-  exportCanvas.toBlob((blob) => {
-    if (blob) {
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `${APP_NAME}.png`;
-      a.click();
-      URL.revokeObjectURL(url);
-    }
-  });
+  return color;
 }
 
-const titleElement = document.createElement("h1");
-titleElement.innerText = APP_NAME;
-app.prepend(titleElement);
+// Function to get a random rotation in radians
+function getRandomRotation(): number {
+  return Math.random() * 2 * Math.PI; // Random angle between 0 and 2π radians
+}
+
+// Export function
+function exportCanvasAsPNG() {
+  const link = document.createElement("a");
+  link.download = "sketch.png";
+  link.href = canvas.toDataURL();
+  link.click();
+}
+
+// Function to select a sticker and use it as the current tool
+function selectSticker(sticker: string) {
+  currentTool = sticker; // Set the current tool to the sticker
+  currentCommand = null; // Reset current command
+}
