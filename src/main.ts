@@ -30,35 +30,44 @@ app.appendChild(toolButtons.thin);
 app.appendChild(toolButtons.thick);
 app.appendChild(toolButtons.clear);
 
-// Sticker array and function to render buttons
-let stickers = ["💞", "✨", "🐱"];
-const renderStickerButtons = () => {
-  // Clear existing buttons if any
-  document.querySelectorAll(".sticker-btn").forEach((btn) => btn.remove());
+// Initial sticker set, represented by an array of emoji strings
+let stickerSet = ["💞", "✨", "🐱"];
+const stickerButtons: HTMLButtonElement[] = [];
 
-  stickers.forEach((sticker) => {
+// Function to create sticker buttons from the stickerSet array
+function createStickerButtons() {
+  stickerButtons.forEach((btn) => app.removeChild(btn));
+  stickerButtons.length = 0;
+
+  stickerSet.forEach((sticker) => {
     const btn = document.createElement("button");
     btn.innerText = sticker;
-    btn.className = "sticker-btn"; 
     btn.addEventListener("click", () => selectSticker(sticker));
+    stickerButtons.push(btn);
     app.appendChild(btn);
   });
-};
+}
 
-// Initial render of sticker buttons
-renderStickerButtons();
+// Initialize sticker buttons
+createStickerButtons();
 
-// Add a button to create custom stickers
+// Add custom sticker button
 const customStickerButton = document.createElement("button");
-customStickerButton.innerText = "Create Custom Sticker";
+customStickerButton.innerText = "Add Custom Sticker";
 customStickerButton.addEventListener("click", () => {
-  const customSticker = prompt("Enter a custom sticker:", "🙂");
+  const customSticker = prompt("Enter a new sticker (emoji or text):", "🎨");
   if (customSticker) {
-    stickers.push(customSticker);
-    renderStickerButtons(); 
+    stickerSet.push(customSticker);
+    createStickerButtons(); // Refresh buttons to include new custom sticker
   }
 });
 app.appendChild(customStickerButton);
+
+// Export button
+const exportButton = document.createElement("button");
+exportButton.innerText = "Export";
+exportButton.addEventListener("click", exportCanvasAsPNG);
+app.appendChild(exportButton);
 
 // Undo/Redo buttons
 const undoButton = document.createElement("button");
@@ -73,7 +82,7 @@ app.appendChild(redoButton);
 let isDrawing = false;
 let currentTool: string = "thin";
 let displayList: Command[] = [];
-const redoStack: Command[] = []; 
+const redoStack: Command[] = []; // Changed to const
 let currentCommand: Command | null = null;
 let toolPreview: ToolPreview | StickerPreview | null = null;
 
@@ -181,12 +190,12 @@ canvas.addEventListener("mousedown", (e) => {
   } else {
     currentCommand = new StickerCommand(currentTool);
   }
-  currentCommand?.drag(e.offsetX, e.offsetY); 
+  currentCommand?.drag(e.offsetX, e.offsetY); // Safe navigation to check if currentCommand is defined
 });
 
 canvas.addEventListener("mousemove", (e) => {
   if (isDrawing && currentCommand) {
-    currentCommand.drag?.(e.offsetX, e.offsetY); 
+    currentCommand.drag?.(e.offsetX, e.offsetY); // Safe navigation here
     fireDrawingChangedEvent();
   }
   if (!isDrawing && toolPreview) {
@@ -203,6 +212,7 @@ canvas.addEventListener("mouseup", () => {
     fireDrawingChangedEvent();
   }
 });
+
 // Handle tool selection
 toolButtons.thin.addEventListener("click", () => selectTool("thin"));
 toolButtons.thick.addEventListener("click", () => selectTool("thick"));
@@ -257,6 +267,30 @@ function selectSticker(sticker: string) {
   currentCommand = null;
   toolPreview = new StickerPreview(sticker);
   fireToolMovedEvent();
+}
+
+// Export functionality
+function exportCanvasAsPNG() {
+  const exportCanvas = document.createElement("canvas");
+  exportCanvas.width = 1024;
+  exportCanvas.height = 1024;
+  const exportCtx = exportCanvas.getContext("2d")!;
+  exportCtx.scale(4, 4);
+
+  for (const command of displayList) {
+    command.draw(exportCtx);
+  }
+
+  exportCanvas.toBlob((blob) => {
+    if (blob) {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${APP_NAME}.png`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+  });
 }
 
 const titleElement = document.createElement("h1");
