@@ -30,13 +30,35 @@ app.appendChild(toolButtons.thin);
 app.appendChild(toolButtons.thick);
 app.appendChild(toolButtons.clear);
 
-// Sticker buttons
-const stickerButtons = ["💞", "✨", "🐱"].map((sticker) => {
-  const btn = document.createElement("button");
-  btn.innerText = sticker;
-  app.appendChild(btn);
-  return btn;
+// Sticker array and function to render buttons
+let stickers = ["💞", "✨", "🐱"];
+const renderStickerButtons = () => {
+  // Clear existing buttons if any
+  document.querySelectorAll(".sticker-btn").forEach((btn) => btn.remove());
+
+  stickers.forEach((sticker) => {
+    const btn = document.createElement("button");
+    btn.innerText = sticker;
+    btn.className = "sticker-btn"; 
+    btn.addEventListener("click", () => selectSticker(sticker));
+    app.appendChild(btn);
+  });
+};
+
+// Initial render of sticker buttons
+renderStickerButtons();
+
+// Add a button to create custom stickers
+const customStickerButton = document.createElement("button");
+customStickerButton.innerText = "Create Custom Sticker";
+customStickerButton.addEventListener("click", () => {
+  const customSticker = prompt("Enter a custom sticker:", "🙂");
+  if (customSticker) {
+    stickers.push(customSticker);
+    renderStickerButtons(); 
+  }
 });
+app.appendChild(customStickerButton);
 
 // Undo/Redo buttons
 const undoButton = document.createElement("button");
@@ -51,7 +73,7 @@ app.appendChild(redoButton);
 let isDrawing = false;
 let currentTool: string = "thin";
 let displayList: Command[] = [];
-const redoStack: Command[] = []; // Changed to const
+const redoStack: Command[] = []; 
 let currentCommand: Command | null = null;
 let toolPreview: ToolPreview | StickerPreview | null = null;
 
@@ -159,12 +181,12 @@ canvas.addEventListener("mousedown", (e) => {
   } else {
     currentCommand = new StickerCommand(currentTool);
   }
-  currentCommand?.drag(e.offsetX, e.offsetY); // Safe navigation to check if currentCommand is defined
+  currentCommand?.drag(e.offsetX, e.offsetY); 
 });
 
 canvas.addEventListener("mousemove", (e) => {
   if (isDrawing && currentCommand) {
-    currentCommand.drag?.(e.offsetX, e.offsetY); // Safe navigation here
+    currentCommand.drag?.(e.offsetX, e.offsetY); 
     fireDrawingChangedEvent();
   }
   if (!isDrawing && toolPreview) {
@@ -187,11 +209,6 @@ toolButtons.thick.addEventListener("click", () => selectTool("thick"));
 toolButtons.clear.addEventListener("click", () => {
   displayList = [];
   fireDrawingChangedEvent();
-});
-
-// Handle sticker selection
-stickerButtons.forEach((btn, _index) => { // Prefixed index with underscore
-  btn.addEventListener("click", () => selectSticker(btn.innerText));
 });
 
 // Undo/Redo logic
