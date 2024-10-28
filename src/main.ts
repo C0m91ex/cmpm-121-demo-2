@@ -4,6 +4,10 @@ const APP_NAME = "Sketch Pad";
 const app = document.querySelector<HTMLDivElement>("#app")!;
 document.title = APP_NAME;
 
+// Create a container for the canvas and position it above the buttons
+const canvasContainer = document.createElement("div");
+canvasContainer.style.marginBottom = "10px"; // Adds space below the canvas to separate it from buttons
+
 // Canvas setup
 const canvas = document.createElement("canvas");
 canvas.width = 256;
@@ -11,7 +15,8 @@ canvas.height = 256;
 canvas.style.border = "1px solid black";
 canvas.style.borderRadius = "8px";
 canvas.style.boxShadow = "0px 0px 5px 2px rgba(0, 0, 0, 0.5)";
-app.appendChild(canvas);
+canvasContainer.appendChild(canvas); // Add canvas to the container
+app.appendChild(canvasContainer);    // Add container to the app
 
 const ctx = canvas.getContext("2d")!;
 
